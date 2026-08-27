@@ -1,0 +1,7 @@
+# Keep local data out of the build context
+work/
+huggingface/
+.git/
+.github/
+*.md
+compose.yml

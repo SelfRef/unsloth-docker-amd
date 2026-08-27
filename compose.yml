@@ -1,0 +1,35 @@
+services:
+  unsloth:
+    build: .
+    # `docker compose pull` fetches the CI-built image; `docker compose build` rebuilds locally
+    image: ghcr.io/selfref/unsloth-docker-amd:latest
+    ports:
+      - "8000:8000"
+    devices:
+      - /dev/kfd   # ROCm compute (omit if the GPU is Vulkan-only)
+      - /dev/dri   # GPU render nodes (needed by both ROCm and Vulkan)
+    group_add:
+      - video
+      - render
+    security_opt:
+      - seccomp=unconfined
+    ipc: host
+    volumes:
+      - ./work:/workspace
+      # Hugging Face cache (models/datasets) — HF_HOME points here
+      - ./huggingface:/workspace/.cache/huggingface
+      # Uncomment to keep Studio state (accounts, run history, llama.cpp builds)
+      # across container recreation. Note: this snapshots the baked Python env
+      # too — remove the volume after pulling a new image version.
+      # - unsloth-studio:/opt/studio
+    environment:
+      # Uncomment/adjust for your GPU — see README.md
+      # HSA_OVERRIDE_GFX_VERSION: "11.0.0"   # e.g. RX 7000 series (gfx1100/01/02)
+      # UNSLOTH_FORCE_VULKAN: "1"            # use Vulkan llama.cpp backend
+      HF_TOKEN: "${HF_TOKEN:-}"
+    stdin_open: true
+    tty: true
+
+# Uncomment together with the unsloth-studio mount above.
+# volumes:
+#   unsloth-studio:
