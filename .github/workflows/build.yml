@@ -92,16 +92,35 @@ jobs:
             org.opencontainers.image.description=Unsloth for AMD GPUs (ROCm + Vulkan)
             dev.selfref.unsloth.version=${{ steps.unsloth.outputs.version }}
 
+      # Plain `docker buildx build` in a retry loop instead of build-push-action:
+      # importing the ~6 GB torch layer from the registry cache regularly trips
+      # GHCR's burst limiter ("429 Too Many Requests, retry-after: ~500ms"), and
+      # BuildKit does not retry a 429 — one throttled re-open of that transfer
+      # fails the whole build. Retrying the build is the only lever; a repeat
+      # attempt starts from the same cache state.
       - name: Build and push
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            UNSLOTH_VERSION=${{ steps.unsloth.outputs.version }}
-          # GHA cache caps at 10 GB — far too small here, so cache layers in the registry
-          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
-          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}:buildcache,mode=max', env.IMAGE_NAME) || '' }}
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          LABELS: ${{ steps.meta.outputs.labels }}
+          PUSH: ${{ github.event_name != 'pull_request' }}
+          UNSLOTH_VERSION: ${{ steps.unsloth.outputs.version }}
+        run: |
+          args=()
+          while IFS= read -r tag;   do [ -n "$tag" ]   && args+=(--tag "$tag");     done <<< "$TAGS"
+          while IFS= read -r label; do [ -n "$label" ] && args+=(--label "$label"); done <<< "$LABELS"
+          if [ "$PUSH" = true ]; then
+            # GHA cache caps at 10 GB — far too small here, so cache layers in the registry
+            args+=(--push --cache-to "type=registry,ref=${IMAGE_NAME}:buildcache,mode=max")
+          fi
+          for attempt in 1 2 3 4; do
+            if docker buildx build --platform linux/amd64 \
+                 --build-arg "UNSLOTH_VERSION=${UNSLOTH_VERSION}" \
+                 --cache-from "type=registry,ref=${IMAGE_NAME}:buildcache" \
+                 "${args[@]}" . ; then
+              exit 0
+            fi
+            echo "::warning::build attempt ${attempt} failed (GHCR throttling?); retrying in 120 s"
+            sleep 120
+          done
+          echo "::error::build failed after 4 attempts"
+          exit 1
