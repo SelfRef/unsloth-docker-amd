@@ -36,6 +36,7 @@ Build args if you need different versions:
 | `TORCH_INDEX_URL` | `.../whl/rocm7.1` | PyTorch ROCm wheel index — keep in sync with `ROCM_TAG` |
 | `TORCH_SPEC` | `torch>=2.4,<2.11.0` | Unsloth's documented torch pin for AMD |
 | `BNB_WHEEL` | bitsandbytes `1.33.7.preview` | ROCm-compatible bitsandbytes wheel URL |
+| `UNSLOTH_VERSION` | *(empty = latest pip resolves)* | Pin the Unsloth release. CI always passes the newest PyPI version — this is what makes the weekly rebuild actually pick up new releases instead of replaying the cached pip layer. Also published as the `unsloth-<version>` image tag and the `dev.selfref.unsloth.version` label. |
 
 ## Run
 

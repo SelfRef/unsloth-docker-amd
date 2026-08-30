@@ -59,8 +59,13 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir "${TORCH_SPEC}" torchvision torchaudio \
         --index-url "${TORCH_INDEX_URL}"
 
-# Unsloth with AMD extras + Studio web UI dependencies
-RUN pip install --no-cache-dir "unsloth[amd,studio]"
+# Unsloth with AMD extras + Studio web UI dependencies.
+# UNSLOTH_VERSION pins the release (CI resolves the latest from PyPI and passes
+# it in). It exists for cache-busting: the layer cache keys on the instruction
+# text, so an unpinned install is replayed from the registry cache forever and a
+# scheduled rebuild never picks up a new Unsloth. Empty = whatever pip resolves.
+ARG UNSLOTH_VERSION=
+RUN pip install --no-cache-dir "unsloth[amd,studio]${UNSLOTH_VERSION:+==$UNSLOTH_VERSION}"
 
 # ROCm-compatible bitsandbytes (enables 4-bit QLoRA on AMD).
 # --no-deps + --force-reinstall: replace whatever CUDA build unsloth pulled in
