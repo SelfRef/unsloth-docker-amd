@@ -16,7 +16,7 @@ Supported hardware follows [Unsloth's AMD matrix](https://unsloth.ai/docs/basics
 
 ## Get the image
 
-Prebuilt by [GitHub Actions](.github/workflows/build.yml) on every Dockerfile change, tag, and weekly (to pick up new Unsloth releases):
+Prebuilt by [GitHub Actions](.github/workflows/build.yml) on every Dockerfile change, tag, and weekly (to pick up new Unsloth releases). Every build is a clean build (~15–20 min): a registry layer cache on GHCR turned out to be unusable — GHCR throttles the multi-GB cached layers with `429 Too Many Requests` and BuildKit does not retry, so cached builds failed reliably.
 
 ```bash
 docker pull ghcr.io/selfref/unsloth-docker-amd:latest
@@ -36,7 +36,7 @@ Build args if you need different versions:
 | `TORCH_INDEX_URL` | `.../whl/rocm7.1` | PyTorch ROCm wheel index — keep in sync with `ROCM_TAG` |
 | `TORCH_SPEC` | `torch>=2.4,<2.11.0` | Unsloth's documented torch pin for AMD |
 | `BNB_WHEEL` | bitsandbytes `1.33.7.preview` | ROCm-compatible bitsandbytes wheel URL |
-| `UNSLOTH_VERSION` | *(empty = latest pip resolves)* | Pin the Unsloth release. CI always passes the newest PyPI version — this is what makes the weekly rebuild actually pick up new releases instead of replaying the cached pip layer. Also published as the `unsloth-<version>` image tag and the `dev.selfref.unsloth.version` label. |
+| `UNSLOTH_VERSION` | *(empty = latest pip resolves)* | Pin the Unsloth release. CI passes the newest PyPI version and publishes it as the `unsloth-<version>` image tag and the `dev.selfref.unsloth.version` label. |
 
 ## Run
 

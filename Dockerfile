@@ -61,9 +61,10 @@ RUN pip install --no-cache-dir "${TORCH_SPEC}" torchvision torchaudio \
 
 # Unsloth with AMD extras + Studio web UI dependencies.
 # UNSLOTH_VERSION pins the release (CI resolves the latest from PyPI and passes
-# it in). It exists for cache-busting: the layer cache keys on the instruction
-# text, so an unpinned install is replayed from the registry cache forever and a
-# scheduled rebuild never picks up a new Unsloth. Empty = whatever pip resolves.
+# it in, and publishes it as the `unsloth-<version>` tag). Empty = whatever pip
+# resolves. Also protects against layer-cache replay if a cache is ever used:
+# the cache keys on the instruction text, so an unpinned install would never
+# pick up a new release.
 ARG UNSLOTH_VERSION=
 RUN pip install --no-cache-dir "unsloth[amd,studio]${UNSLOTH_VERSION:+==$UNSLOTH_VERSION}"
 
