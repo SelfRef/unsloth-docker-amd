@@ -18,18 +18,24 @@ services:
       - ./work:/workspace
       # Hugging Face cache (models/datasets) — HF_HOME points here
       - ./huggingface:/workspace/.cache/huggingface
-      # Uncomment to keep Studio state (accounts, run history, llama.cpp builds)
-      # across container recreation. Note: this snapshots the baked Python env
-      # too — remove the volume after pulling a new image version.
-      # - unsloth-studio:/opt/studio
+      # Studio state (accounts/password, chat history, download cache, datasets,
+      # outputs, runs, llama.cpp builds) — survives container recreation and
+      # image upgrades (the Python venv stays in the image, see Dockerfile).
+      - unsloth-studio:/opt/studio-data
     environment:
       # Uncomment/adjust for your GPU — see README.md
       # HSA_OVERRIDE_GFX_VERSION: "11.0.0"   # e.g. RX 7000 series (gfx1100/01/02)
       # UNSLOTH_FORCE_VULKAN: "1"            # use Vulkan llama.cpp backend
       HF_TOKEN: "${HF_TOKEN:-}"
+      # Initial admin ("unsloth") password. Applied on the first start only; the
+      # entrypoint ignores it once a password is set (change it in the UI, or
+      # `unsloth studio reset-password`). Leave empty to use the generated
+      # bootstrap password printed in the logs.
+      UNSLOTH_STUDIO_PASSWORD: "${UNSLOTH_STUDIO_PASSWORD:-}"
+      # Set when a reverse proxy in front sets X-Forwarded-For (login rate limiting).
+      # UNSLOTH_STUDIO_TRUST_FORWARDED: "1"
     stdin_open: true
     tty: true
 
-# Uncomment together with the unsloth-studio mount above.
-# volumes:
-#   unsloth-studio:
+volumes:
+  unsloth-studio:

@@ -50,6 +50,7 @@ docker run -it --rm \
   -p 8000:8000 \
   -v "$PWD/work:/workspace" \
   -v "$PWD/huggingface:/workspace/.cache/huggingface" \
+  -v unsloth-studio:/opt/studio-data \
   unsloth-amd
 ```
 
@@ -105,8 +106,9 @@ docker run --rm --device=/dev/kfd --device=/dev/dri --security-opt seccomp=uncon
 
 ## Notes
 
-- On first start Studio creates an admin account (user `unsloth`); the bootstrap password is printed in the container logs and saved to `/opt/studio/auth/.bootstrap_password`.
-- Downloaded models/datasets persist in the `./huggingface` folder (`HF_HOME=/workspace/.cache/huggingface`); your own files live in the `./work` bind mount. Studio's own state — accounts, run history, downloaded llama.cpp builds — lives in `/opt/studio` and is lost when the container is removed; add `-v unsloth-studio:/opt/studio` to keep it (but drop that volume after image upgrades, it snapshots the baked Python env too).
+- On first start Studio creates an admin account (user `unsloth`). Pass `-e UNSLOTH_STUDIO_PASSWORD=...` to set its password non-interactively; otherwise a bootstrap password is printed in the container logs and saved to `/opt/studio-data/auth/.bootstrap_password` (log in and change it within `UNSLOTH_STUDIO_BOOTSTRAP_TIMEOUT`, default 1 h, or Studio shuts itself down). Studio applies the variable to the *initial* password only and refuses to start if it is set once a password exists — the image's entrypoint drops it in that case, so it is safe to keep in a compose file.
+- Downloaded models/datasets persist in the `./huggingface` folder (`HF_HOME=/workspace/.cache/huggingface`); your own files live in the `./work` bind mount. Studio's own state — accounts, chat history, download cache, datasets, outputs, runs, downloaded llama.cpp builds — is kept in `/opt/studio-data` (symlinked from `UNSLOTH_STUDIO_HOME=/opt/studio` by the entrypoint): mount a volume there (`-v unsloth-studio:/opt/studio-data`, as in `compose.yml`). Do **not** mount `/opt/studio` itself — it also holds the Python venv, which would then be frozen across image upgrades.
+- Behind a reverse proxy that sets `X-Forwarded-For`, add `-e UNSLOTH_STUDIO_TRUST_FORWARDED=1` so login rate limiting keys on the real client.
 - The container runs as root (standard for ROCm images — device access is simplest that way). Files created in `/workspace` will be root-owned on the host; `chown` them or run with `--user` plus matching `render`/`video` group IDs if that matters to you.
 - `HF_HOME` points into `/workspace`, so downloaded models/datasets persist in the mounted volume.
 - Pass `-e HF_TOKEN=...` for gated models.

@@ -93,11 +93,23 @@ ENV HF_HOME=/workspace/.cache/huggingface
 #   HSA_OVERRIDE_GFX_VERSION  — spoof gfx arch for ROCm on consumer GPUs
 #   UNSLOTH_FORCE_VULKAN=1    — make Studio use the Vulkan llama.cpp build
 
+# Studio's persistent state (auth db + admin password, studio.db, download
+# cache, datasets, outputs, runs, llama.cpp builds) lives here, symlinked from
+# UNSLOTH_STUDIO_HOME by the entrypoint. Mount a volume on THIS path — not on
+# /opt/studio, which also holds the Python venv and would freeze it across
+# image upgrades. The entrypoint also makes UNSLOTH_STUDIO_PASSWORD idempotent
+# (Studio itself exits if it is set once a password exists).
+ENV UNSLOTH_STUDIO_DATA=/opt/studio-data
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+    && mkdir -p "${UNSLOTH_STUDIO_DATA}"
+VOLUME ["/workspace", "/opt/studio-data"]
+
 WORKDIR /workspace
-VOLUME /workspace
 
 EXPOSE 8000
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 # Bind to 0.0.0.0 so the published port is reachable from the host.
 # Override CMD to run training scripts instead, e.g.:
 #   docker run ... unsloth-amd python my_finetune.py
